@@ -1,0 +1,31 @@
+{
+  "name": "roadguard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "RoadGuard - Roadside Assistance Platform (Customer App, Mechanic App, Admin Panel, Backend)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "backend:dev": "pnpm --filter @roadguard/backend dev",
+    "backend:migrate": "pnpm --filter @roadguard/backend prisma:migrate",
+    "admin:dev": "pnpm --filter @roadguard/admin-web dev",
+    "customer:start": "pnpm --filter @roadguard/customer-mobile start",
+    "mechanic:start": "pnpm --filter @roadguard/mechanic-mobile start"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0",
+    "prettier": "^3.3.0",
+    "eslint": "^8.57.0"
+  },
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

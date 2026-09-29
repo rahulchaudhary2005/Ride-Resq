@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "RoadGuard Partner",
+    "slug": "roadguard-mechanic",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "roadguard-partner",
+    "userInterfaceStyle": "automatic",
+    "splash": { "backgroundColor": "#0F172A" },
+    "ios": { "bundleIdentifier": "app.roadguard.mechanic", "supportsTablet": true },
+    "android": {
+      "package": "app.roadguard.mechanic",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"]
+    },
+    "plugins": ["expo-location", "expo-notifications"]
+  }
+}

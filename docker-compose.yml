@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: roadguard_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: roadguard
+      POSTGRES_PASSWORD: roadguard_dev_pw
+      POSTGRES_DB: roadguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roadguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: roadguard_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: roadguard_backend
+    restart: unless-stopped
+    env_file:
+      - ./apps/backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "4000:4000"
+
+  admin-web:
+    build:
+      context: ./apps/admin-web
+      dockerfile: Dockerfile
+    container_name: roadguard_admin_web
+    restart: unless-stopped
+    env_file:
+      - ./apps/admin-web/.env
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

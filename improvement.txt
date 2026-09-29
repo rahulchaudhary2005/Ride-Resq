@@ -1,0 +1,123 @@
+PHASE 1
+Database + pricing architecture
+        ↓
+PHASE 2
+Secure fare calculation
+        ↓
+PHASE 3
+Customer price modification/negotiation
+        ↓
+PHASE 4
+Request ownership + status security
+        ↓
+PHASE 5
+Mechanic availability + dispatch
+        ↓
+PHASE 6
+Payment + idempotency + webhook security
+        ↓
+PHASE 7
+Real admin health
+        ↓
+PHASE 8
+Real request activity analytics
+        ↓
+PHASE 9
+Real revenue
+        ↓
+PHASE 10
+Customer + mechanic UI synchronization
+        ↓
+PHASE 11
+Production validation
+
+                    ADMIN
+                      │
+                      ▼
+              ServicePricing
+                      │
+                      │
+                      ▼
+CUSTOMER ──────► REQUEST API
+                      │
+                      ▼
+                Fare Engine
+                      │
+            ┌─────────┴─────────┐
+            │                   │
+       Base pricing        Distance
+            │                   │
+            └─────────┬─────────┘
+                      ▼
+               Calculated Fare
+                      │
+                      ▼
+              Pricing Snapshot
+                      │
+                      ▼
+                ServiceRequest
+                      │
+                      ▼
+                 Mechanic
+                      │
+                      ▼
+                Service Done
+                      │
+                      ▼
+              Final Fare Rules
+                      │
+                      ▼
+                   Payment
+                      │
+              ┌───────┴───────┐
+              ▼               ▼
+          Platform         Mechanic
+           Revenue          Payout
+              │               │
+              └───────┬───────┘
+                      ▼
+                ADMIN DASHBOARD
+
+                Our next major phase
+
+After confirming the customer app opens, I recommend we proceed one feature at a time:
+
+Phase A — Customer
+✅ Expo/Metro setup
+🔄 Customer login/register
+Customer home
+Location permission
+Vehicle selection
+Service selection
+Fare quote
+Customer offer
+Create request
+Live request status
+Phase B — Mechanic
+Mechanic login
+Online/offline status
+Receive request:new
+Show customer request
+Show automatic fare/customer offer
+Accept/reject
+Navigate to customer
+Update ARRIVED → IN_PROGRESS → COMPLETED
+Phase C — Real-time
+Socket authentication
+Customer ↔ mechanic live updates
+Location tracking
+Request cancellation
+Notifications
+Phase D — Payments
+Razorpay checkout
+Webhook verification
+Idempotent payment confirmation
+Wallet/payment history
+Phase E — Production hardening
+Validation
+Authorization
+Rate limiting
+Error handling
+Logging
+Security
+Deployment

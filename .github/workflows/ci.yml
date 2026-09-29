@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: roadguard
+          POSTGRES_PASSWORD: roadguard_dev_pw
+          POSTGRES_DB: roadguard
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma generate
+      - run: pnpm build
+      - run: pnpm lint
+      - run: pnpm test
+        env:
+          DATABASE_URL: postgresql://roadguard:roadguard_dev_pw@localhost:5432/roadguard
+          JWT_ACCESS_SECRET: test_access_secret_min_10_chars
+          JWT_REFRESH_SECRET: test_refresh_secret_min_10_chars
+
+  admin-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build

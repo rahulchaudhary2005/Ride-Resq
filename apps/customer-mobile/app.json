@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "RoadGuard",
+    "slug": "roadguard-customer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0B1220"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.roadguard.customer"
+    },
+    "android": {
+      "package": "app.roadguard.customer",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-location",
+      "expo-notifications"
+    ]
+  }
+}
