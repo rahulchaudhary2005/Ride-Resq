@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg: 8 10 14;
-  --bg-2: 12 15 21;
-  --surface: 17 21 28;
-  --surface-2: 23 28 36;
-  --surface-3: 29 35 44;
+  --bg: 10 15 30;
+  --bg-2: 13 20 39;
+  --surface: 19 29 54;
+  --surface-2: 24 36 66;
+  --surface-3: 31 45 79;
 
-  --border: 45 52 63;
-  --border-light: 63 71 84;
+  --border: 39 55 91;
+  --border-light: 57 76 119;
 
   --text-primary: 248 250 252;
   --text-secondary: 173 181 193;
   --text-muted: 112 122 136;
 
-  --accent: 255 176 32;
-  --accent-soft: 255 176 32;
-  --accent-ink: 20 18 12;
+  --accent: 151 113 255;
+  --accent-soft: 151 113 255;
+  --accent-ink: 255 255 255;
 
   --green: 56 211 132;
   --blue: 77 145 255;
@@ -63,12 +63,8 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at 75% -15%,
-      rgb(var(--accent) / 0.08),
-      transparent 30%),
-    radial-gradient(circle at 10% 100%,
-      rgb(var(--blue) / 0.04),
-      transparent 28%),
+    radial-gradient(circle at 78% -20%, rgb(var(--blue) / 0.13), transparent 32%),
+    radial-gradient(circle at 20% 110%, rgb(var(--purple) / 0.11), transparent 34%),
     rgb(var(--bg));
 
   color: rgb(var(--text-primary));
@@ -625,7 +621,7 @@ button {
   padding: 18px;
 
   border: 1px solid rgb(var(--border));
-  border-radius: var(--radius);
+  border-radius: 9px;
 
   background:
     linear-gradient(145deg,
@@ -744,7 +740,7 @@ button {
   padding: 20px;
 
   border: 1px solid rgb(var(--border));
-  border-radius: var(--radius);
+  border-radius: 9px;
 
   background:
     linear-gradient(145deg,
@@ -896,7 +892,7 @@ button {
   width: 100%;
 
   border: 1px solid rgb(var(--border));
-  border-radius: var(--radius);
+  border-radius: 9px;
 
   background: rgb(var(--surface) / 0.8);
 
@@ -940,6 +936,159 @@ button {
 
 .rg-table tbody tr:hover {
   background: rgb(var(--surface-2) / 0.6);
+}
+
+.operations-links {
+  display: grid;
+  gap: 8px;
+}
+
+.operation-link {
+  min-height: 61px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 7px;
+  background: rgb(var(--surface-2) / 0.55);
+  color: rgb(var(--text-primary));
+  text-align: left;
+  cursor: pointer;
+}
+
+.operation-link:hover {
+  border-color: rgb(var(--accent) / 0.55);
+  background: rgb(var(--surface-3));
+}
+
+.operation-icon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.operation-icon--blue {
+  background: rgb(var(--blue) / 0.13);
+  color: rgb(var(--blue));
+}
+
+.operation-icon--green {
+  background: rgb(var(--green) / 0.13);
+  color: rgb(var(--green));
+}
+
+.operation-icon--violet {
+  background: rgb(var(--purple) / 0.15);
+  color: rgb(var(--purple));
+}
+
+.operation-link>span:nth-child(2) {
+  flex: 1;
+}
+
+.operation-link strong {
+  display: block;
+  font-size: 10px;
+}
+
+.operation-link small {
+  display: block;
+  margin-top: 3px;
+  color: rgb(var(--text-muted));
+  font-size: 8px;
+}
+
+.operation-link>b {
+  color: rgb(var(--text-muted));
+  font-size: 14px;
+}
+
+.recent-requests-panel {
+  margin-top: 14px;
+}
+
+.live-activity-panel {
+  margin-top: 18px;
+}
+
+.live-activity-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-activity-item {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid rgb(var(--border) / 0.65);
+}
+
+.live-activity-marker {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(var(--green));
+  box-shadow: 0 0 10px rgb(var(--green) / 0.45);
+}
+
+.live-activity-item strong,
+.live-activity-item small {
+  display: block;
+}
+
+.live-activity-item strong {
+  font-size: 12px;
+}
+
+.live-activity-item small,
+.live-activity-item time {
+  margin-top: 3px;
+  color: rgb(var(--text-muted));
+  font-size: 10px;
+}
+
+@media (max-width: 520px) {
+  .live-activity-item {
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+
+  .live-activity-item time {
+    grid-column: 2;
+    margin-top: -8px;
+  }
+}
+
+.dashboard-table-wrap {
+  border: 0;
+  background: transparent;
+}
+
+.dashboard-table {
+  min-width: 650px;
+}
+
+.dashboard-table th {
+  font-size: 8px;
+}
+
+.dashboard-table td {
+  font-size: 9px;
+  padding: 11px 12px;
+}
+
+.dashboard-table td strong {
+  color: rgb(var(--text-primary));
+  text-transform: capitalize;
 }
 
 .filter-select,
@@ -1360,6 +1509,18 @@ button {
 
   .page-head h2 {
     font-size: 26px;
+  }
+
+  .stat-grid {
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-value {
+    font-size: 22px;
   }
 
   .login-shell {

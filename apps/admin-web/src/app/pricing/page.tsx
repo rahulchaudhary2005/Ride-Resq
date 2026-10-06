@@ -7,6 +7,9 @@ export default function PricingPage() {
   const [pricing, setPricing] =
     useState<any[]>([]);
 
+  const [vehicleTaxRules, setVehicleTaxRules] =
+    useState<any[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -21,8 +24,25 @@ export default function PricingPage() {
         await api.get("/admin/pricing");
 
       setPricing(data.data);
+      const taxResponse = await api.get("/admin/vehicle-tax");
+      setVehicleTaxRules(taxResponse.data.data);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function updateVehicleTax(rule: any, perKmRate: number) {
+    if (!Number.isFinite(perKmRate) || perKmRate < 0) return;
+    setSaving(`${rule.vehicleClass}-tax`);
+    try {
+      await api.put("/admin/vehicle-tax", {
+        vehicleClass: rule.vehicleClass,
+        perKmRate,
+      });
+      const { data } = await api.get("/admin/vehicle-tax");
+      setVehicleTaxRules(data.data);
+    } finally {
+      setSaving("");
     }
   }
 
@@ -182,6 +202,45 @@ export default function PricingPage() {
               No pricing rules configured.
             </div>
           )}
+      </div>
+
+      <div className="page-head" style={{ marginTop: 28 }}>
+        <div>
+          <h2>Vehicle distance tax</h2>
+          <p>Configure the additional per-kilometer tax applied to the selected vehicle class.</p>
+        </div>
+      </div>
+
+      <div className="rg-table-wrap">
+        <table className="rg-table" style={{ minWidth: 540 }}>
+          <thead>
+            <tr>
+              <th>Vehicle class</th>
+              <th>Tax per route kilometer</th>
+              <th>Example at 10 km</th>
+            </tr>
+          </thead>
+          <tbody>
+            {vehicleTaxRules.map((rule) => (
+              <tr key={rule.vehicleClass}>
+                <td><strong>{rule.vehicleClass}</strong></td>
+                <td>
+                  <input
+                    className="field"
+                    style={{ width: 140 }}
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    defaultValue={rule.perKmRate}
+                    disabled={saving === `${rule.vehicleClass}-tax`}
+                    onBlur={(event) => updateVehicleTax(rule, Number(event.target.value))}
+                  />
+                </td>
+                <td>₹{(Number(rule.perKmRate) * 10).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

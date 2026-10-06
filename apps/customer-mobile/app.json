@@ -21,7 +21,8 @@
     },
     "plugins": [
       "expo-location",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-asset"
     ]
   }
 }

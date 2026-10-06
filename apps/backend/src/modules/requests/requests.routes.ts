@@ -9,6 +9,7 @@ import { validate } from "../../middlewares/validate.middleware";
 import {
   createRequestSchema,
   quoteRequestSchema,
+  createOfferSchema,
   updateStatusSchema,
 } from "./requests.validation";
 
@@ -40,8 +41,19 @@ router.post(
 );
 
 router.get(
+  "/available",
+  requireRole("MECHANIC"),
+  requestsController.listAvailable,
+);
+
+router.get(
   "/mine",
   requestsController.listMine,
+);
+
+router.get(
+  "/:id/messages",
+  requestsController.listChatMessages,
 );
 
 router.get(
@@ -58,6 +70,25 @@ router.patch(
   ),
   validate(updateStatusSchema),
   requestsController.updateStatus,
+);
+
+router.post(
+  "/:id/offer",
+  requireRole("CUSTOMER"),
+  validate(createOfferSchema),
+  requestsController.createOffer,
+);
+
+router.post(
+  "/:id/offer/accept",
+  requireRole("MECHANIC"),
+  requestsController.acceptOffer,
+);
+
+router.post(
+  "/:id/offer/reject",
+  requireRole("MECHANIC"),
+  requestsController.rejectOffer,
 );
 
 export default router;

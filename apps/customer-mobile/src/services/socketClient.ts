@@ -5,12 +5,18 @@ import { API_BASE_URL } from "./apiClient";
 let socket: Socket | null = null;
 
 export async function connectSocket(): Promise<Socket> {
-  if (socket?.connected) return socket;
+  if (socket) return socket;
 
-  const token = await SecureStore.getItemAsync("accessToken");
   const socketUrl = API_BASE_URL.replace("/api/v1", "");
 
-  socket = io(socketUrl, { auth: { token }, transports: ["websocket"] });
+  socket = io(socketUrl, {
+    auth: (callback) => {
+      SecureStore.getItemAsync("accessToken")
+        .then((token) => callback({ token }))
+        .catch(() => callback({ token: null }));
+    },
+    transports: ["websocket"],
+  });
   return socket;
 }
 

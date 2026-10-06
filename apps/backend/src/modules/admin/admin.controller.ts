@@ -58,6 +58,24 @@ export const adminController = {
     }
   },
 
+  async listVehicleTaxRules(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await adminService.listVehicleTaxRules();
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async upsertVehicleTaxRule(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await adminService.upsertVehicleTaxRule(req.body.vehicleClass, req.body.perKmRate);
+      return success(res, result, "Vehicle distance tax updated");
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async listSupportTickets(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await adminService.listSupportTickets(req.query.status as string | undefined);

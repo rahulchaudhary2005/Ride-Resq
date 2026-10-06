@@ -22,6 +22,8 @@ const envSchema = z.object({
 
   GOOGLE_MAPS_API_KEY: z.string().optional(),
 
+  FAST2SMS_API_KEY: z.string().optional(),
+
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),

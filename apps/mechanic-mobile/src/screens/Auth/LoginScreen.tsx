@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-native";
 import { useAuth } from "../../store/authStore";
 
-export function LoginScreen() {
+export function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,7 +13,7 @@ export function LoginScreen() {
     try {
       await login(email, password);
     } catch (err: any) {
-      Alert.alert("Login failed", err?.response?.data?.message ?? "Please try again");
+      Alert.alert("Login failed", err?.response?.data?.message ?? err?.message ?? "Please try again");
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,9 @@ export function LoginScreen() {
       <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? "Signing in..." : "Sign In"}</Text>
       </Pressable>
-      <Text style={styles.note}>New partners are onboarded by the RoadGuard team.</Text>
+      <Pressable onPress={() => navigation.navigate("Signup")}>
+        <Text style={styles.note}>New mechanic? Create a partner account</Text>
+      </Pressable>
     </View>
   );
 }

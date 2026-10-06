@@ -1,7 +1,7 @@
 import { prisma } from "../config/db";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
-import { ServiceCategory } from "@prisma/client";
+import { ServiceCategory, VehicleClass } from "@prisma/client";
 
 export interface FareCalculation {
   estimatedFare: number;
@@ -12,6 +12,9 @@ export interface FareCalculation {
   surgeMultiplier: number;
   minFare: number;
   pricingVersion: number;
+  vehicleClass: VehicleClass;
+  distanceTaxRate: number;
+  distanceTax: number;
 }
 
 interface Coordinates {
@@ -43,6 +46,7 @@ export async function calculateFare(
   category: ServiceCategory,
   origin: Coordinates,
   destination?: Coordinates,
+  vehicleClass: VehicleClass = VehicleClass.SMALL,
 ): Promise<FareCalculation> {
   validateCoordinates(origin, "origin");
 
@@ -55,6 +59,8 @@ export async function calculateFare(
       category,
     },
   });
+
+  const vehicleTaxRule = await prisma.vehicleTaxRule.findUnique({ where: { vehicleClass } });
 
   if (!pricing || !pricing.isActive) {
     throw ApiError.badRequest(
@@ -73,12 +79,14 @@ export async function calculateFare(
   const perKmRate = Number(pricing.perKmRate);
   const minFare = Number(pricing.minFare);
   const surgeMultiplier = Number(pricing.surgeMultiplier);
+  const distanceTaxRate = Number(vehicleTaxRule?.perKmRate ?? 0);
 
   if (
     !Number.isFinite(baseFare) ||
     !Number.isFinite(perKmRate) ||
     !Number.isFinite(minFare) ||
     !Number.isFinite(surgeMultiplier)
+    || !Number.isFinite(distanceTaxRate)
   ) {
     throw ApiError.internal(
       "Invalid pricing configuration",
@@ -90,6 +98,7 @@ export async function calculateFare(
     perKmRate < 0 ||
     minFare < 0 ||
     surgeMultiplier <= 0
+    || distanceTaxRate < 0
   ) {
     throw ApiError.internal(
       "Invalid pricing configuration",
@@ -102,8 +111,10 @@ export async function calculateFare(
     (baseFare + distanceFare) *
     surgeMultiplier;
 
+  const distanceTax = distanceKm * distanceTaxRate;
+
   const estimatedFare = roundMoney(
-    Math.max(calculated, minFare),
+    Math.max(calculated, minFare) + distanceTax,
   );
 
   return {
@@ -115,6 +126,9 @@ export async function calculateFare(
     surgeMultiplier,
     minFare: roundMoney(minFare),
     pricingVersion: pricing.pricingVersion,
+    vehicleClass,
+    distanceTaxRate: roundMoney(distanceTaxRate),
+    distanceTax: roundMoney(distanceTax),
   };
 }
 

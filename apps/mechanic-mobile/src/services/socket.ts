@@ -5,11 +5,14 @@ import { SOCKET_URL } from "../config/constants";
 let socket: Socket | null = null;
 
 export async function getSocket(): Promise<Socket> {
-  if (socket?.connected) return socket;
+  if (socket) return socket;
 
-  const token = await SecureStore.getItemAsync("accessToken");
   socket = io(SOCKET_URL, {
-    auth: { token },
+    auth: (callback) => {
+      SecureStore.getItemAsync("accessToken")
+        .then((token) => callback({ token }))
+        .catch(() => callback({ token: null }));
+    },
     transports: ["websocket"],
   });
   return socket;

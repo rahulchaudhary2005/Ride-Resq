@@ -13,6 +13,8 @@ router.patch("/mechanics/:id/verification", adminController.verifyMechanic);
 router.get("/requests", adminController.listRequests);
 router.get("/pricing", adminController.listPricing);
 router.put("/pricing", adminController.upsertPricing);
+router.get("/vehicle-tax", adminController.listVehicleTaxRules);
+router.put("/vehicle-tax", adminController.upsertVehicleTaxRule);
 router.get("/support-tickets", adminController.listSupportTickets);
 
 export default router;

@@ -14,7 +14,7 @@ import PaymentScreen from "../screens/Payment/PaymentScreen";
 import HistoryScreen from "../screens/History/HistoryScreen";
 import ProfileScreen from "../screens/Profile/ProfileScreen";
 import { View } from "react-native";
-import { Text } from "react-native";
+import { StatusBar, Text } from "react-native";
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -31,10 +31,16 @@ function AuthNavigator() {
 
 function MainTabs() {
   return (
-    <Tabs.Navigator screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="Home" component={HomeScreen} />
-      <Tabs.Screen name="History" component={HistoryScreen} />
-      <Tabs.Screen name="Profile" component={ProfileScreen} />
+    <Tabs.Navigator screenOptions={{
+      headerShown: false,
+      tabBarActiveTintColor: "#24764F",
+      tabBarInactiveTintColor: "#98A29B",
+      tabBarLabelStyle: { fontSize: 9, fontWeight: "700", marginBottom: 5 },
+      tabBarStyle: { height: 62, paddingTop: 7, borderTopColor: "#E5EAE6", backgroundColor: "#FFFFFF" },
+    }}>
+      <Tabs.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>⌂</Text> }} />
+      <Tabs.Screen name="History" component={HistoryScreen} options={{ title: "My Requests", tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 16 }}>▤</Text> }} />
+      <Tabs.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 16 }}>○</Text> }} />
     </Tabs.Navigator>
   );
 }
@@ -67,6 +73,7 @@ export default function RootNavigator() {
           justifyContent: "center",
         }}
       >
+        <StatusBar barStyle="dark-content" />
         <Text
           style={{
             fontSize: 28,

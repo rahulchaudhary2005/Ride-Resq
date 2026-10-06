@@ -5,6 +5,8 @@ import type {
   ServiceCategory,
 } from "@roadguard/shared-types";
 
+export type VehicleClass = "SMALL" | "MEDIUM" | "HEAVY";
+
 export interface FareQuote {
   category: ServiceCategory;
   estimatedFare: number;
@@ -14,6 +16,9 @@ export interface FareQuote {
   surgeMultiplier: number;
   minFare: number;
   pricingVersion: number;
+  vehicleClass: VehicleClass;
+  distanceTaxRate: number;
+  distanceTax: number;
 }
 
 interface RequestState {
@@ -26,6 +31,7 @@ interface RequestState {
     pickupLng: number;
     dropLat?: number;
     dropLng?: number;
+    vehicleClass?: VehicleClass;
   }) => Promise<FareQuote>;
 
   createRequest: (input: {
@@ -39,6 +45,7 @@ interface RequestState {
     vehicleId?: string;
     description?: string;
     customerRequestedFare?: number;
+    vehicleClass?: VehicleClass;
   }) => Promise<ServiceRequest>;
 
   fetchMine: () => Promise<void>;

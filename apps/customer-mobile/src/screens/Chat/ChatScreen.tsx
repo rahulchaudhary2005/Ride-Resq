@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { connectSocket } from "../../services/socketClient";
+import { apiClient } from "../../services/apiClient";
 import { useAuthStore } from "../../store/authStore";
 import type { ChatMessage } from "@roadguard/shared-types";
 
@@ -13,15 +14,23 @@ export default function ChatScreen({ route }: any) {
 
   useEffect(() => {
     let socketRef: any;
+    const onMessage = (msg: ChatMessage) => {
+      if (msg.requestId !== requestId) return;
+      setMessages((prev) => prev.some((item) => item.id === msg.id) ? prev : [...prev, msg]);
+    };
+
     (async () => {
+      const { data } = await apiClient.get(`/requests/${requestId}/messages`);
+      setMessages(data.data);
       const socket = await connectSocket();
       socketRef = socket;
       socket.emit("chat:join", { requestId });
-      socket.on("chat:message", (msg: ChatMessage) => {
-        setMessages((prev) => [...prev, msg]);
-      });
+      socket.on("chat:message", onMessage);
     })();
-    return () => socketRef?.off("chat:message");
+    return () => {
+      socketRef?.off("chat:message", onMessage);
+      socketRef?.emit("chat:leave", { requestId });
+    };
   }, [requestId]);
 
   const send = async () => {

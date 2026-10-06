@@ -11,6 +11,7 @@ import {
   ServiceCategory,
   FareMode,
   FareOfferStatus,
+  VehicleClass,
 } from "@prisma/client";
 
 interface QuoteInput {
@@ -21,6 +22,7 @@ interface QuoteInput {
 
   dropLat?: number;
   dropLng?: number;
+  vehicleClass?: VehicleClass;
 }
 
 interface CreateRequestInput
@@ -117,7 +119,23 @@ function buildFareSnapshot(
 
     pricingVersionSnapshot:
       calculation.pricingVersion,
+
+    vehicleClass:
+      calculation.vehicleClass,
+
+    distanceTaxSnapshot:
+      calculation.distanceTax,
+
+    distanceTaxRateSnapshot:
+      calculation.distanceTaxRate,
   };
+}
+
+function inferVehicleClass(vehicleType: string): VehicleClass {
+  const normalized = vehicleType.toLowerCase();
+  if (/bus|truck|heavy|commercial|tractor/.test(normalized)) return VehicleClass.HEAVY;
+  if (/suv|van|pickup|medium/.test(normalized)) return VehicleClass.MEDIUM;
+  return VehicleClass.SMALL;
 }
 
 /**
@@ -197,6 +215,7 @@ export const requestsService = {
             lng: input.dropLng,
           }
           : undefined,
+        input.vehicleClass,
       );
 
     return {
@@ -227,6 +246,7 @@ export const requestsService = {
     /**
      * Validate selected vehicle ownership.
      */
+    let vehicleClass = input.vehicleClass ?? VehicleClass.SMALL;
     if (input.vehicleId) {
       const vehicle =
         await prisma.vehicle.findFirst({
@@ -237,6 +257,7 @@ export const requestsService = {
 
           select: {
             id: true,
+            vehicleType: true,
           },
         });
 
@@ -245,6 +266,7 @@ export const requestsService = {
           "Selected vehicle does not belong to this customer",
         );
       }
+      vehicleClass = inferVehicleClass(vehicle.vehicleType);
     }
 
     /**
@@ -266,6 +288,7 @@ export const requestsService = {
             lng: input.dropLng,
           }
           : undefined,
+        vehicleClass,
       );
 
     /**
@@ -294,10 +317,10 @@ export const requestsService = {
     ) {
       if (
         input.customerRequestedFare <
-        calculation.minFare
+        calculation.minFare + calculation.distanceTax
       ) {
         throw ApiError.badRequest(
-          `Customer requested fare cannot be below the minimum fare of ₹${calculation.minFare.toFixed(2)}`,
+          `Customer requested fare cannot be below the minimum fare of ₹${(calculation.minFare + calculation.distanceTax).toFixed(2)}`,
         );
       }
       // validateCustomerOffer(
@@ -400,7 +423,13 @@ export const requestsService = {
       request.id,
     );
 
-    return request;
+    const createdRequest = await prisma.serviceRequest.findUniqueOrThrow({ where: { id: request.id } });
+    getIO().to("admin:live").emit("admin:activity", {
+      type: "REQUEST_CREATED",
+      request: createdRequest,
+      timestamp: new Date().toISOString(),
+    });
+    return createdRequest;
   },
   async createOffer(
     requestId: string,
@@ -483,6 +512,7 @@ export const requestsService = {
         : Number(
           request.estimatedFare,
         );
+    const minimumTotal = minimumFare + Number(request.distanceTaxSnapshot ?? 0);
 
     if (
       !Number.isFinite(minimumFare)
@@ -492,9 +522,9 @@ export const requestsService = {
       );
     }
 
-    if (amount < minimumFare) {
+    if (amount < minimumTotal) {
       throw ApiError.badRequest(
-        `Offer cannot be below the minimum fare of ₹${minimumFare.toFixed(
+        `Offer cannot be below the minimum fare of ₹${minimumTotal.toFixed(
           2,
         )}`,
       );
@@ -567,6 +597,8 @@ export const requestsService = {
           },
         );
       }
+    } else {
+      await this.dispatchToNearbyMechanics(updated.id);
     }
 
     /**
@@ -578,6 +610,11 @@ export const requestsService = {
       "request:offer_updated",
       updated,
     );
+    io.to("admin:live").emit("admin:activity", {
+      type: "FARE_OFFER_UPDATED",
+      request: updated,
+      timestamp: new Date().toISOString(),
+    });
 
     return updated;
   },
@@ -667,6 +704,16 @@ export const requestsService = {
       );
     }
 
+    if (
+      !mechanic.lastLocationUpdate ||
+      Date.now() - mechanic.lastLocationUpdate.getTime() > LOCATION_STALE_MS ||
+      mechanic.currentLat === null ||
+      mechanic.currentLng === null ||
+      haversineKm(request.pickupLat, request.pickupLng, mechanic.currentLat, mechanic.currentLng) > SEARCH_RADIUS_KM
+    ) {
+      throw ApiError.forbidden("This request is outside your current dispatch area");
+    }
+
     /**
      * Atomic request claim.
      *
@@ -751,6 +798,13 @@ export const requestsService = {
       "request:offer_accepted",
       updated,
     );
+    io.to(`request:${requestId}`).emit("request:status", updated);
+    io.to(`user:${updated.customerId}`).emit("request:status", updated);
+    io.to("admin:live").emit("admin:activity", {
+      type: "FARE_OFFER_ACCEPTED",
+      request: updated,
+      timestamp: new Date().toISOString(),
+    });
 
     await notifyUser(
       updated.customerId,
@@ -881,6 +935,11 @@ export const requestsService = {
       "request:offer_rejected",
       updated,
     );
+    io.to("admin:live").emit("admin:activity", {
+      type: "FARE_OFFER_REJECTED",
+      request: updated,
+      timestamp: new Date().toISOString(),
+    });
 
     await notifyUser(
       updated.customerId,
@@ -1185,6 +1244,16 @@ export const requestsService = {
         }
 
         if (
+          !mechanic.lastLocationUpdate ||
+          Date.now() - mechanic.lastLocationUpdate.getTime() > LOCATION_STALE_MS ||
+          mechanic.currentLat === null ||
+          mechanic.currentLng === null ||
+          haversineKm(request.pickupLat, request.pickupLng, mechanic.currentLat, mechanic.currentLng) > SEARCH_RADIUS_KM
+        ) {
+          throw ApiError.forbidden("This request is outside your current dispatch area");
+        }
+
+        if (
           !mechanic.serviceCategories.includes(
             request.category,
           )
@@ -1475,6 +1544,12 @@ export const requestsService = {
       "request:status",
       updated,
     );
+    io.to("admin:live").emit("admin:activity", {
+      type: "REQUEST_STATUS_CHANGED",
+      request: updated,
+      previousStatus: request.status,
+      timestamp: new Date().toISOString(),
+    });
 
     /**
      * Push notification.
@@ -1518,11 +1593,25 @@ export const requestsService = {
           include: {
             mechanic: {
               include: {
-                user: true,
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    phone: true,
+                    avatarUrl: true,
+                  },
+                },
               },
             },
 
-            customer: true,
+            customer: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                avatarUrl: true,
+              },
+            },
 
             vehicle: true,
 
@@ -1579,6 +1668,19 @@ export const requestsService = {
     return request;
   },
 
+  async listChatMessages(
+    requestId: string,
+    actorId: string,
+    actorRole: ActorRole,
+  ) {
+    await this.getById(requestId, actorId, actorRole);
+    return prisma.chatMessage.findMany({
+      where: { requestId },
+      orderBy: { sentAt: "asc" },
+      take: 200,
+    });
+  },
+
   /**
    * List requests for customer or mechanic.
    */
@@ -1626,5 +1728,90 @@ export const requestsService = {
         createdAt: "desc",
       },
     });
+  },
+
+  async listAvailableForMechanic(userId: string) {
+    const mechanic = await prisma.mechanicProfile.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        isOnline: true,
+        verificationStatus: true,
+        currentLat: true,
+        currentLng: true,
+        lastLocationUpdate: true,
+        serviceCategories: true,
+      },
+    });
+
+    if (!mechanic || mechanic.verificationStatus !== "APPROVED") {
+      return [];
+    }
+
+    if (
+      !mechanic.isOnline ||
+      mechanic.currentLat === null ||
+      mechanic.currentLng === null ||
+      !mechanic.lastLocationUpdate ||
+      Date.now() - mechanic.lastLocationUpdate.getTime() > LOCATION_STALE_MS
+    ) {
+      return [];
+    }
+
+    if (mechanic.serviceCategories.length === 0) return [];
+
+    const latitudeDelta = SEARCH_RADIUS_KM / 110.574;
+    const longitudeDelta = SEARCH_RADIUS_KM / (111.32 * Math.max(Math.cos((mechanic.currentLat * Math.PI) / 180), 0.01));
+    const candidates = await prisma.serviceRequest.findMany({
+      where: {
+        status: RequestStatus.PENDING,
+        mechanicId: null,
+        category: { in: mechanic.serviceCategories },
+        createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) },
+        pickupLat: {
+          gte: Math.max(-90, mechanic.currentLat - latitudeDelta),
+          lte: Math.min(90, mechanic.currentLat + latitudeDelta),
+        },
+        pickupLng: {
+          gte: Math.max(-180, mechanic.currentLng - longitudeDelta),
+          lte: Math.min(180, mechanic.currentLng + longitudeDelta),
+        },
+      },
+      select: {
+        id: true,
+        category: true,
+        status: true,
+        description: true,
+        pickupLat: true,
+        pickupLng: true,
+        pickupAddress: true,
+        dropLat: true,
+        dropLng: true,
+        dropAddress: true,
+        estimatedFare: true,
+        customerRequestedFare: true,
+        fareMode: true,
+        fareOfferStatus: true,
+        distanceKm: true,
+        requestedAt: true,
+        customer: {
+          select: {
+            fullName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+
+    return candidates
+      .map((request) => ({
+        ...request,
+        distanceToPickupKm: Number(
+          haversineKm(mechanic.currentLat!, mechanic.currentLng!, request.pickupLat, request.pickupLng).toFixed(2),
+        ),
+      }))
+      .filter((request) => request.distanceToPickupKm <= SEARCH_RADIUS_KM)
+      .sort((a, b) => a.distanceToPickupKm - b.distanceToPickupKm);
   },
 };

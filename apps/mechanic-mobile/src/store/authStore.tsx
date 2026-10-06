@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import * as SecureStore from "expo-secure-store";
 import { api } from "../services/api";
+import { disconnectSocket } from "../services/socket";
 import type { User } from "@roadguard/shared-types";
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (input: { fullName: string; email: string; phone: string; password: string }) => Promise<void>;
+  register: (input: { fullName: string; email: string; phone: string; password: string; phoneVerificationToken: string }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -18,18 +19,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     (async () => {
-      const token = await SecureStore.getItemAsync("accessToken");
-      if (token) {
-        try {
+      try {
+        const token = await SecureStore.getItemAsync("accessToken");
+        if (token) {
           const { data } = await api.get("/users/me");
-          setUser(data.data);
-        } catch {
-          await SecureStore.deleteItemAsync("accessToken");
+          const restoredUser = data.data as User;
+          if (restoredUser.role !== "MECHANIC") throw new Error("Account is not a mechanic");
+          if (active) setUser(restoredUser);
         }
+      } catch {
+        await SecureStore.deleteItemAsync("accessToken").catch(() => undefined);
+        await SecureStore.deleteItemAsync("refreshToken").catch(() => undefined);
+      } finally {
+        if (active) setLoading(false);
       }
-      setLoading(false);
     })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function persistSession(tokens: { accessToken: string; refreshToken: string }, u: User) {
@@ -40,20 +51,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     const { data } = await api.post("/auth/login", { email, password });
-    await persistSession(data.data, data.data.user);
+    const user = data.data.user as User;
+    if (user.role !== "MECHANIC") throw new Error("This account does not have mechanic access.");
+    await persistSession(data.data, user);
   }
 
-  async function register(input: { fullName: string; email: string; phone: string; password: string }) {
+  async function register(input: { fullName: string; email: string; phone: string; password: string; phoneVerificationToken: string }) {
     const { data } = await api.post("/auth/register", { ...input, role: "MECHANIC" });
     await persistSession(data.data, data.data.user);
   }
 
   async function logout() {
-    const refreshToken = await SecureStore.getItemAsync("refreshToken");
-    if (refreshToken) await api.post("/auth/logout", { refreshToken }).catch(() => {});
-    await SecureStore.deleteItemAsync("accessToken");
-    await SecureStore.deleteItemAsync("refreshToken");
-    setUser(null);
+    disconnectSocket();
+    try {
+      const refreshToken = await SecureStore.getItemAsync("refreshToken");
+      if (refreshToken) await api.post("/auth/logout", { refreshToken }).catch(() => { });
+    } finally {
+      setUser(null);
+      await SecureStore.deleteItemAsync("accessToken");
+      await SecureStore.deleteItemAsync("refreshToken");
+    }
   }
 
   return (

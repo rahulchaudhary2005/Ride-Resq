@@ -3,6 +3,24 @@ import { authService } from "./auth.service";
 import { success } from "../../utils/apiResponse";
 
 export const authController = {
+  async startPhoneOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      await authService.startPhoneOtp(req.body.phone);
+      return success(res, null, "Verification code sent");
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async verifyPhoneOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const verificationToken = await authService.verifyPhoneOtp(req.body.phone, req.body.code);
+      return success(res, { verificationToken }, "Phone verified");
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.register(req.body);

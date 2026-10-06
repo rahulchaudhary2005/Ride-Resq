@@ -11,6 +11,20 @@ import { success } from "../../utils/apiResponse";
 import { ApiError } from "../../utils/errors";
 
 export const requestsController = {
+  async listAvailable(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) throw ApiError.unauthorized();
+      const result = await requestsService.listAvailableForMechanic(req.user.sub);
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async create(
     req: Request,
     res: Response,
@@ -202,6 +216,24 @@ export const requestsController = {
         res,
         result,
       );
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async listChatMessages(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) throw ApiError.unauthorized();
+      const result = await requestsService.listChatMessages(
+        req.params.id,
+        req.user.sub,
+        req.user.role,
+      );
+      return success(res, result);
     } catch (err) {
       next(err);
     }

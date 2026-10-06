@@ -18,6 +18,7 @@ interface AuthState {
     email: string;
     phone: string;
     password: string;
+    phoneVerificationToken: string;
   }) => Promise<void>;
 
   logout: () => Promise<void>;
@@ -52,6 +53,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     const { accessToken, refreshToken, user } =
       response.data.data;
+
+    if (user.role !== "CUSTOMER") {
+      throw new Error("This account uses the RoadGuard mechanic partner app.");
+    }
 
     await SecureStore.setItemAsync(
       "accessToken",
@@ -137,6 +142,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       const response = await apiClient.get<MeResponse>(
         "/users/me"
       );
+
+      if (response.data.data.role !== "CUSTOMER") {
+        throw new Error("This account uses the RoadGuard mechanic partner app.");
+      }
 
       set({
         user: response.data.data,

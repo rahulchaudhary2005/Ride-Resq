@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 
 import { env } from "../config/env";
 import { prisma } from "../config/db";
+import { getIO } from "../config/socket";
 import { ApiError } from "../utils/errors";
 
 const stripe = env.STRIPE_SECRET_KEY
@@ -80,8 +81,10 @@ export const paymentService = {
       throw ApiError.badRequest("Invalid fare amount");
     }
 
-    const platformFee = +(amount * PLATFORM_FEE_PERCENT).toFixed(2);
-    const mechanicPayout = +(amount - platformFee).toFixed(2);
+    const taxAmount = Number(request.distanceTaxSnapshot ?? 0);
+    const taxableServiceAmount = Math.max(0, amount - taxAmount);
+    const platformFee = +(taxableServiceAmount * PLATFORM_FEE_PERCENT).toFixed(2);
+    const mechanicPayout = +(taxableServiceAmount - platformFee).toFixed(2);
 
     let providerRef: string;
 
@@ -128,6 +131,7 @@ export const paymentService = {
         providerRef,
         platformFee,
         mechanicPayout,
+        taxAmount,
       },
 
       update: {
@@ -136,9 +140,16 @@ export const paymentService = {
         amount,
         platformFee,
         mechanicPayout,
+        taxAmount,
       },
     });
 
+    getIO().to("admin:live").emit("admin:activity", {
+      type: "PAYMENT_STARTED",
+      request: { id: requestId, status: request.status },
+      payment,
+      timestamp: new Date().toISOString(),
+    });
     return payment;
   },
 
@@ -155,7 +166,7 @@ export const paymentService = {
     requestId: string,
     providerRef?: string
   ) {
-    return prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       const payment = await tx.payment.findUnique({
         where: { requestId },
       });
@@ -166,7 +177,7 @@ export const paymentService = {
 
       // Already processed.
       if (payment.status === "PAID") {
-        return payment;
+        return { payment, newlyPaid: false, requestStatus: null };
       }
 
       if (
@@ -192,9 +203,11 @@ export const paymentService = {
 
       // Another webhook/request won the race.
       if (result.count === 0) {
-        return tx.payment.findUniqueOrThrow({
-          where: { requestId },
-        });
+        return {
+          payment: await tx.payment.findUniqueOrThrow({ where: { requestId } }),
+          newlyPaid: false,
+          requestStatus: null,
+        };
       }
 
       const request = await tx.serviceRequest.findUnique({
@@ -218,12 +231,19 @@ export const paymentService = {
         });
       }
 
-      return tx.payment.findUniqueOrThrow({
-        where: {
-          requestId,
-        },
-      });
+      const paidPayment = await tx.payment.findUniqueOrThrow({ where: { requestId } });
+      return { payment: paidPayment, newlyPaid: true, requestStatus: request.status };
     });
+
+    if (outcome.newlyPaid) {
+      getIO().to("admin:live").emit("admin:activity", {
+        type: "PAYMENT_CONFIRMED",
+        request: { id: requestId, status: outcome.requestStatus },
+        payment: outcome.payment,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return outcome.payment;
   },
 
   verifyRazorpayWebhook(

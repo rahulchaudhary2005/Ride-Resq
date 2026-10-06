@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { io, type Socket } from "socket.io-client";
 
 const statuses = [
   "PENDING",
@@ -72,6 +73,33 @@ export default function RequestsPage() {
 
   useEffect(() => {
     load();
+    const refreshTimer = window.setInterval(load, 10000);
+    const token = document.cookie
+      .split("; ")
+      .find((cookie) => cookie.startsWith("adminToken="))
+      ?.split("=")[1];
+    const socket: Socket | undefined = token
+      ? io(process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000", {
+        auth: { token: decodeURIComponent(token) },
+        reconnection: true,
+      })
+      : undefined;
+    const handleActivity = (event: any) => {
+      if (!["CHAT_MESSAGE", "MECHANIC_AVAILABILITY_CHANGED"].includes(event.type)) void load();
+    };
+    const handleTracking = (position: any) => {
+      setRequests((current) => current.map((request) => request.id === position.requestId
+        ? { ...request, mechanic: request.mechanic ? { ...request.mechanic, currentLat: position.lat, currentLng: position.lng } : request.mechanic }
+        : request));
+    };
+    socket?.on("admin:activity", handleActivity);
+    socket?.on("admin:tracking", handleTracking);
+    return () => {
+      window.clearInterval(refreshTimer);
+      socket?.off("admin:activity", handleActivity);
+      socket?.off("admin:tracking", handleTracking);
+      socket?.disconnect();
+    };
   }, [statusFilter]);
 
   return (
@@ -132,8 +160,10 @@ export default function RequestsPage() {
                   <th>Category</th>
                   <th>Customer</th>
                   <th>Mechanic</th>
+                  <th>Mechanic location</th>
                   <th>Status</th>
                   <th>Fare</th>
+                  <th>Payment</th>
                   <th>Created</th>
                 </tr>
               </thead>
@@ -161,6 +191,12 @@ export default function RequestsPage() {
                     </td>
 
                     <td>
+                      {request.mechanic?.currentLat != null && request.mechanic?.currentLng != null
+                        ? `${Number(request.mechanic.currentLat).toFixed(4)}, ${Number(request.mechanic.currentLng).toFixed(4)}`
+                        : "No live fix"}
+                    </td>
+
+                    <td>
                       <span
                         className={getBadge(
                           request.status
@@ -178,6 +214,12 @@ export default function RequestsPage() {
                       {request.finalFare ??
                         request.estimatedFare ??
                         "—"}
+                    </td>
+
+                    <td>
+                      <span className={`badge ${request.payment?.status === "PAID" ? "badge--completed" : request.payment?.status === "PENDING" ? "badge--pending" : "badge--cancelled"}`}>
+                        {request.payment?.status ?? "NOT STARTED"}
+                      </span>
                     </td>
 
                     <td>

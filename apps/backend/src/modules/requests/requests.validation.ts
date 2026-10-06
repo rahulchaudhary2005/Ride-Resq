@@ -16,6 +16,8 @@ const serviceCategorySchema =
     "EV_CHARGING",
   ]);
 
+const vehicleClassSchema = z.enum(["SMALL", "MEDIUM", "HEAVY"]);
+
 export const createRequestSchema =
   z.object({
     body: z.object({
@@ -58,6 +60,9 @@ export const createRequestSchema =
           .finite()
           .positive()
           .optional(),
+
+      vehicleClass:
+        vehicleClassSchema.optional(),
     }),
   });
 
@@ -85,6 +90,9 @@ export const quoteRequestSchema =
           .min(-180)
           .max(180)
           .optional(),
+
+      vehicleClass:
+        vehicleClassSchema.optional(),
     }),
   });
 
